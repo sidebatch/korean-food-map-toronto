@@ -1,0 +1,263 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>토론토 한인맛집 맵</title>
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+<style>
+  * { margin:0; padding:0; box-sizing:border-box; -webkit-tap-highlight-color:transparent; }
+  html,body { height:100%; font-family:-apple-system,'Segoe UI','Malgun Gothic',sans-serif; color:#2b2620; overflow:hidden; }
+  #map { position:fixed; inset:0; z-index:1; background:#ececec; }
+
+  /* ── 상단 플로팅 바 ── */
+  .topbar { position:fixed; top:0; left:0; right:0; z-index:1200; padding:10px 12px 0; pointer-events:none; }
+  .topbar > * { pointer-events:auto; }
+  .titleRow { display:flex; align-items:center; gap:8px; }
+  .titleCard { background:rgba(255,255,255,.94); border-radius:14px; padding:8px 13px; box-shadow:0 2px 10px rgba(0,0,0,.13); font-weight:800; font-size:16px; letter-spacing:-.4px; }
+  .titleCard small { display:block; font-size:11px; font-weight:600; color:#8a7f6d; margin-top:1px; }
+  #search { flex:1; border:none; border-radius:14px; padding:11px 13px; font-size:14px; background:rgba(255,255,255,.94); box-shadow:0 2px 10px rgba(0,0,0,.13); outline:none; min-width:0; }
+  .chipRow { display:flex; gap:6px; overflow-x:auto; padding:8px 0 2px; scrollbar-width:none; }
+  .chipRow::-webkit-scrollbar { display:none; }
+  .chip { white-space:nowrap; border:none; background:rgba(255,255,255,.94); color:#5c5344; border-radius:999px; padding:7px 12px; font-size:12.5px; font-weight:700; cursor:pointer; box-shadow:0 2px 8px rgba(0,0,0,.12); }
+  .chip.on { background:#2b2620; color:#fff; }
+  .chip.cat.on { background:#d64541; color:#fff; }
+  .sep { width:4px; flex:none; }
+
+  /* ── 상호명 말풍선 마커 ── */
+  .lbl-wrap { background:none; border:none; pointer-events:none; }
+  .marker { position:relative; width:150px; height:48px; pointer-events:none; }
+  .marker .dot { position:absolute; left:50%; top:50%; transform:translate(-50%,-50%); width:11px; height:11px; border-radius:50%; background:#d64541; border:2.5px solid #fff; box-shadow:0 1px 5px rgba(0,0,0,.4); pointer-events:auto; cursor:pointer; }
+  .marker .pill { position:absolute; left:50%; transform:translateX(-50%); bottom:31px; background:#fff; color:#2b2620; font-size:11.5px; font-weight:700; white-space:nowrap; padding:4px 9px; border-radius:999px; box-shadow:0 2px 7px rgba(0,0,0,.22); pointer-events:auto; cursor:pointer; letter-spacing:-.3px; }
+  .marker .pill::after { content:""; position:absolute; left:50%; transform:translateX(-50%); bottom:-4px; border:4.5px solid transparent; border-top-color:#fff; border-bottom:none; }
+  .marker.down .pill { bottom:auto; top:31px; }
+  .marker.down .pill::after { bottom:auto; top:-4px; border-top:none; border-bottom:4.5px solid #fff; }
+  .marker.sel .pill { background:#d64541; color:#fff; font-size:13px; padding:6px 12px; z-index:999; }
+  .marker.sel .pill::after { border-top-color:#d64541; }
+  .marker.sel.down .pill::after { border-top-color:transparent; border-bottom-color:#d64541; }
+  .marker.sel .dot { background:#2b2620; }
+  /* 줌이 낮으면 이름은 숨기고 점만 (겹침 방지 1단계) */
+  body.zdot .marker .pill { display:none; }
+  /* 겹침 판정으로 밀린 이름은 숨기고 점만 남김 (겹침 방지 2단계) */
+  .marker .pill.collided { display:none; }
+
+  /* ── 하단 컨트롤 ── */
+  .fabCol { position:fixed; right:12px; bottom:22px; z-index:1200; display:flex; flex-direction:column; gap:9px; }
+  .fab { border:none; background:rgba(255,255,255,.96); border-radius:999px; padding:11px 15px; font-size:13.5px; font-weight:800; cursor:pointer; box-shadow:0 3px 12px rgba(0,0,0,.18); }
+  .fab.primary { background:#2b2620; color:#fff; }
+  #countBadge { position:fixed; left:12px; bottom:22px; z-index:1100; background:rgba(43,38,32,.88); color:#fff; font-size:12.5px; font-weight:700; border-radius:999px; padding:8px 13px; }
+
+  /* ── 목록 시트 ── */
+  #listPanel { position:fixed; left:0; right:0; bottom:0; max-height:58vh; background:#faf6ef; border-radius:20px 20px 0 0; z-index:1500; transform:translateY(105%); transition:transform .25s ease; display:flex; flex-direction:column; box-shadow:0 -4px 24px rgba(0,0,0,.2); }
+  #listPanel.show { transform:translateY(0); }
+  #listPanel .head { display:flex; justify-content:space-between; align-items:center; padding:15px 18px 8px; }
+  #listPanel .head b { font-size:16px; }
+  #listClose, #dClose { border:none; background:#eee5d0; width:30px; height:30px; border-radius:50%; font-size:15px; cursor:pointer; flex:none; }
+  #list { overflow-y:auto; padding:2px 12px 26px; }
+  .card { background:#fff; border:1.5px solid #eee3cf; border-radius:14px; padding:11px 13px; margin:7px 0; cursor:pointer; }
+  .card.sel { border-color:#d64541; }
+  .card .nm { font-size:15px; font-weight:800; }
+  .card .nm span { font-weight:600; color:#a08f76; font-size:12px; }
+  .card .meta { font-size:12px; color:#8a7f6d; margin-top:2px; }
+  .card .memo { font-size:12.5px; margin-top:5px; line-height:1.45; color:#4c453a; }
+  .tag { display:inline-block; font-size:10.5px; font-weight:700; background:#f6ecdc; color:#96762f; border-radius:6px; padding:2px 7px; margin-right:5px; }
+  .tag.area { background:#e8f0e9; color:#3f7a4e; }
+
+  /* ── 상세 시트 (간략) ── */
+  #detail { position:fixed; left:0; right:0; bottom:0; background:#fff; border-radius:20px 20px 0 0; box-shadow:0 -4px 24px rgba(0,0,0,.2); padding:17px 18px 24px; z-index:1600; transform:translateY(105%); transition:transform .25s ease; }
+  #detail.show { transform:translateY(0); }
+  #detail h2 { font-size:20px; font-weight:800; padding-right:34px; letter-spacing:-.4px; }
+  #detail .eng { font-size:12.5px; color:#a08f76; margin-top:1px; }
+  #detail .addr { font-size:13px; color:#8a7f6d; margin-top:7px; }
+  #detail .memo { font-size:14px; margin-top:9px; line-height:1.55; }
+  #detail .tags { margin-top:10px; }
+  #detail .row { display:flex; gap:8px; margin-top:14px; }
+  #detail a.btn { flex:1; text-align:center; text-decoration:none; font-weight:800; font-size:14px; border-radius:12px; padding:12px 0; }
+  #detail a.dir { background:#d64541; color:#fff; }
+  #detail a.gmap { background:#f1ead9; color:#2b2620; }
+  #dClose { position:absolute; top:13px; right:14px; }
+  .leaflet-control-attribution { font-size:9px !important; background:rgba(255,255,255,.65) !important; }
+  .leaflet-control-zoom { border:none !important; box-shadow:0 2px 10px rgba(0,0,0,.15) !important; margin-top:110px !important; }
+</style>
+</head>
+<body class="zlabel">
+
+<div id="map"></div>
+
+<div class="topbar">
+  <div class="titleRow">
+    <div class="titleCard">📍 한인맛집 맵<small>토론토 · 시제품 v0.2</small></div>
+    <input id="search" type="search" placeholder="검색 (순두부, 달동네…)">
+  </div>
+  <div class="chipRow" id="areaChips">
+    <button class="chip on" data-area="all">전체</button>
+    <button class="chip" data-area="koreatown">코리아타운</button>
+    <button class="chip" data-area="northyork">노스욕</button>
+    <span class="sep"></span>
+    <button class="chip cat on" data-cat="all">분류 전체</button>
+    <button class="chip cat" data-cat="고기">고기·구이</button>
+    <button class="chip cat" data-cat="탕찌개">탕·찌개</button>
+    <button class="chip cat" data-cat="치킨">치킨</button>
+    <button class="chip cat" data-cat="분식">분식</button>
+    <button class="chip cat" data-cat="집밥">집밥·한식</button>
+  </div>
+</div>
+
+<div id="countBadge">16곳</div>
+<div class="fabCol">
+  <button class="fab" id="locBtn">◎ 내 위치</button>
+  <button class="fab primary" id="listBtn">☰ 목록</button>
+</div>
+
+<div id="listPanel">
+  <div class="head"><b id="listTitle">식당 목록</b><button id="listClose">✕</button></div>
+  <div id="list"></div>
+</div>
+
+<div id="detail">
+  <button id="dClose">✕</button>
+  <h2 id="dName"></h2>
+  <div class="eng" id="dEng"></div>
+  <div class="addr" id="dAddr"></div>
+  <div class="memo" id="dMemo"></div>
+  <div class="tags" id="dTags"></div>
+  <div class="row">
+    <a class="btn dir" id="dDir" target="_blank" rel="noopener">길찾기</a>
+    <a class="btn gmap" id="dGmap" target="_blank" rel="noopener">구글맵에서 보기</a>
+  </div>
+</div>
+
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script>
+const PLACES = [
+  {name:"Daldongnae Korean BBQ (Christie)", ko:"달동네", area:"koreatown", cat:"고기", addr:"658 Bloor St W, Toronto", lat:43.664236, lng:-79.415661, memo:"코리아타운 대표 고깃집. 삼겹살과 갈비, 기본으로 나오는 된장찌개와 반찬이 강점. 저녁엔 웨이팅이 잦다.", kw:"달동네 고기 삼겹살 갈비 바베큐 bbq"},
+  {name:"Arisu Korean BBQ", ko:"아리수", area:"koreatown", cat:"고기", addr:"584 Bloor St W, Toronto", lat:43.665100, lng:-79.412650, memo:"블루어 동쪽 끝 고기·스시 집. 점심 특선과 구이 세트가 무난하다.", kw:"아리수 고기 스시 bbq"},
+  {name:"Korean Village Restaurant", ko:"코리아빌리지", area:"koreatown", cat:"고기", addr:"628 Bloor St W, Toronto", lat:43.664610, lng:-79.414440, memo:"오래된 코리아타운 터줏대감. 테이블 구이와 전통 한식 메뉴가 넓게 있다.", kw:"코리아빌리지 한식 구이 전통"},
+  {name:"Sunrise House", ko:"선라이스하우스", area:"koreatown", cat:"집밥", addr:"661 Bloor St W, Toronto", lat:43.664096, lng:-79.415674, memo:"집밥 스타일 작은 식당. 감자탕, 돌솥비빔밥, 김치볶음밥이 양 많고 가격 착하기로 유명하다.", kw:"선라이스 감자탕 비빔밥 집밥 김치볶음밥"},
+  {name:"Jin Dal Lae", ko:"진달래", area:"koreatown", cat:"집밥", addr:"647 Bloor St W, Toronto", lat:43.664200, lng:-79.415186, memo:"냉면과 해물파전, 김치전이 인기. 양이 많고 편안한 분위기.", kw:"진달래 냉면 파전 해물파전 김치전"},
+  {name:"Buk Chang Dong Soon Tofu (Bloor)", ko:"북창동순두부", area:"koreatown", cat:"탕찌개", addr:"691 Bloor St W, Toronto", lat:43.663708, lng:-79.417074, memo:"보글보글 순두부찌개와 돌솥밥 전문. 춥거나 해장하고 싶은 날 1순위.", kw:"북창동 순두부 찌개 돌솥밥 해장"},
+  {name:"The Owl on Bloor", ko:"부엉이 (블루어)", area:"koreatown", cat:"탕찌개", addr:"700 Bloor St W, Toronto", lat:43.663832, lng:-79.417492, memo:"늦은 시간까지 여는 감자탕 집. 불고기와 비빔밥도 있고 밤에 갈 데 없을 때 든든하다.", kw:"부엉이 올빼미 감자탕 심야 늦게 불고기"},
+  {name:"Daldongnae Korean BBQ (North York)", ko:"달동네 노스욕", area:"northyork", cat:"고기", addr:"6034 Yonge St, North York", lat:43.789710, lng:-79.418250, memo:"노스욕 달동네. 숯불 구이와 무제한 반찬, 주말 저녁은 예약이 안전하다.", kw:"달동네 고기 삼겹살 갈비 bbq 숯불"},
+  {name:"Hanyang Jokbal", ko:"한양족발", area:"northyork", cat:"고기", addr:"6016 Yonge St, North York", lat:43.789020, lng:-79.418310, memo:"족발 전문. 여럿이 나눠 먹기 좋고 포장 손님도 많다.", kw:"한양 족발 보쌈"},
+  {name:"Mapo Gamjatang", ko:"마포감자탕", area:"northyork", cat:"탕찌개", addr:"4916 Yonge St, North York", lat:43.764235, lng:-79.411878, memo:"감자탕 전문점. 큰 냄비에 푸짐하게 나오고 늦게까지 연다.", kw:"마포 감자탕 해장 뼈다귀"},
+  {name:"The Famous Owl of Minerva", ko:"부엉이 (노스욕)", area:"northyork", cat:"탕찌개", addr:"5324 Yonge St, North York", lat:43.773258, lng:-79.414293, memo:"노스욕의 오래된 감자탕·한식 집. 밤늦게도 한식이 먹고 싶을 때 가는 곳.", kw:"부엉이 올빼미 미네르바 감자탕 심야 24시"},
+  {name:"Buk Chang Dong Soon Tofu (North York)", ko:"북창동순두부 노스욕", area:"northyork", cat:"탕찌개", addr:"5445 Yonge St, North York", lat:43.777120, lng:-79.414707, memo:"순두부찌개와 돌솥 흑미밥. 빠르고 가격 부담이 적다.", kw:"북창동 순두부 찌개 돌솥밥"},
+  {name:"Kayagum", ko:"가야금", area:"northyork", cat:"집밥", addr:"5460 Yonge St, North York", lat:43.777419, lng:-79.415141, memo:"넓고 전통적인 분위기의 한식당. 짬뽕, 뚝배기불고기, 냉면까지 메뉴 폭이 넓고 늦게까지 연다.", kw:"가야금 짬뽕 불고기 냉면 한식"},
+  {name:"Chicken in the Kitchen", ko:"치킨인더키친", area:"northyork", cat:"치킨", addr:"5600 Yonge St, North York", lat:43.779499, lng:-79.415909, memo:"치즈 볼케이노 치킨으로 유명한 한국식 치킨집. 치맥 하기 좋은 분위기, 새벽까지 연다.", kw:"치킨인더키친 치킨 치맥 볼케이노"},
+  {name:"The Fry", ko:"더프라이", area:"northyork", cat:"치킨", addr:"4864 Yonge St, North York", lat:43.762940, lng:-79.411600, memo:"한국식 프라이드치킨 체인. 양념/간장 등 무난한 치맥 선택지.", kw:"더프라이 치킨 양념치킨 치맥"},
+  {name:"Kimbap KarahOn", ko:"김밥 가라온", area:"northyork", cat:"분식", addr:"5418 Yonge St Unit 18, North York", lat:43.775507, lng:-79.414759, memo:"김밥 전문 테이크아웃. 유부우엉, 와사비 게살 같은 시그니처 롤이 속이 꽉 차 있다. 점심용으로 딱.", kw:"김밥 분식 가라온 테이크아웃"}
+];
+
+const AREA_NAME = {koreatown:"코리아타운", northyork:"노스욕"};
+const CAT_NAME = {고기:"고기·구이", 탕찌개:"탕·찌개", 치킨:"치킨", 분식:"분식", 집밥:"집밥·한식"};
+const AREA_VIEW = {all:[[43.727,-79.415],11], koreatown:[[43.6643,-79.4155],15], northyork:[[43.7765,-79.4145],14]};
+let fArea="all", fCat="all", fQuery="", myLatLng=null, selected=null;
+
+const map = L.map('map', {zoomControl:true}).setView([43.6643,-79.4155], 15);
+L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Light_Gray_Base/MapServer/tile/{z}/{y}/{x}', {
+  maxZoom:16, attribution:'Tiles © Esri — Esri, DeLorme, NAVTEQ · Data © OpenStreetMap contributors'
+}).addTo(map);
+const layer = L.layerGroup().addTo(map);
+let markerObjs = []; // {p, marker}
+
+function distKm(a,b,c,d){ const R=6371, x=(c-a)*Math.PI/180, y=(d-b)*Math.PI/180; const h=Math.sin(x/2)**2 + Math.cos(a*Math.PI/180)*Math.cos(c*Math.PI/180)*Math.sin(y/2)**2; return R*2*Math.atan2(Math.sqrt(h), Math.sqrt(1-h)); }
+
+function filtered(){
+  return PLACES.filter(p =>
+    (fArea==="all" || p.area===fArea) &&
+    (fCat==="all" || p.cat===fCat) &&
+    (!fQuery || (p.name+" "+p.ko+" "+p.kw+" "+p.memo).toLowerCase().includes(fQuery))
+  );
+}
+
+/* 겹침 해소: 선택된 것 우선, 먼저 놓인 이름과 겹치면 이름만 숨기고 점은 남긴다 */
+function declutter(){
+  const z = map.getZoom();
+  document.body.classList.toggle('zdot', z <= 12);
+  if(z <= 12) return;
+  requestAnimationFrame(()=>{
+    const kept = [];
+    const ordered = [...markerObjs].sort((a,b)=> (b.p===selected) - (a.p===selected));
+    for(const {marker} of ordered){
+      const el = marker.getElement(); if(!el) continue;
+      const pill = el.querySelector('.pill'); if(!pill) continue;
+      pill.classList.remove('collided');
+      const r = pill.getBoundingClientRect();
+      const hit = kept.some(k => !(r.right < k.left-3 || r.left > k.right+3 || r.bottom < k.top-3 || r.top > k.bottom+3));
+      if(hit && marker._place !== selected) pill.classList.add('collided');
+      else kept.push(r);
+    }
+  });
+}
+
+function render(){
+  const list = filtered();
+  layer.clearLayers(); markerObjs = [];
+  list.forEach((p,i)=>{
+    const down = i % 2 === 1; // 이웃 라벨을 위/아래로 번갈아 배치해 겹침을 줄인다
+    const icon = L.divIcon({className:"lbl-wrap", iconSize:[150,48], iconAnchor:[75,24],
+      html:`<div class="marker ${down?'down':''} ${selected===p?'sel':''}"><div class="pill">${p.ko}</div><div class="dot"></div></div>`});
+    const m = L.marker([p.lat,p.lng], {icon});
+    m._place = p;
+    m.on('click', ()=> selectPlace(p, false));
+    m.addTo(layer); markerObjs.push({p, marker:m});
+  });
+  document.getElementById('countBadge').textContent = `식당 ${list.length}곳`;
+  const el = document.getElementById('list');
+  document.getElementById('listTitle').textContent = `식당 ${list.length}곳`;
+  el.innerHTML = list.map(p=>{
+    const d = myLatLng ? ` · ${distKm(myLatLng[0],myLatLng[1],p.lat,p.lng).toFixed(1)}km` : "";
+    return `<div class="card ${selected===p?'sel':''}" data-i="${PLACES.indexOf(p)}">
+      <div class="nm">${p.ko} <span>${p.name}</span></div>
+      <div class="meta">${p.addr}${d}</div>
+      <div style="margin-top:6px"><span class="tag area">${AREA_NAME[p.area]}</span><span class="tag">${CAT_NAME[p.cat]}</span></div>
+      <div class="memo">${p.memo}</div></div>`;
+  }).join("") || `<p style="padding:16px;color:#8a7f6d">조건에 맞는 식당이 없어요. 필터를 풀어보세요.</p>`;
+  el.querySelectorAll('.card').forEach(c => c.addEventListener('click', ()=>{ selectPlace(PLACES[+c.dataset.i], true); document.getElementById('listPanel').classList.remove('show'); }));
+  declutter();
+}
+
+function selectPlace(p, fly){
+  selected = p;
+  const q = encodeURIComponent(p.name + " " + p.addr + ", Toronto, ON");
+  document.getElementById('dName').textContent = p.ko;
+  document.getElementById('dEng').textContent = p.name;
+  const d = myLatLng ? ` · 내 위치에서 ${distKm(myLatLng[0],myLatLng[1],p.lat,p.lng).toFixed(1)}km` : "";
+  document.getElementById('dAddr').textContent = `${p.addr}${d}`;
+  document.getElementById('dMemo').textContent = p.memo;
+  document.getElementById('dTags').innerHTML = `<span class="tag area">${AREA_NAME[p.area]}</span><span class="tag">${CAT_NAME[p.cat]}</span>`;
+  document.getElementById('dDir').href = `https://www.google.com/maps/dir/?api=1&destination=${q}`;
+  document.getElementById('dGmap').href = `https://www.google.com/maps/search/?api=1&query=${q}`;
+  document.getElementById('detail').classList.add('show');
+  if(fly) map.flyTo([p.lat,p.lng], Math.max(map.getZoom(),15), {duration:.6}); else map.panTo([p.lat,p.lng]);
+  render();
+}
+document.getElementById('dClose').addEventListener('click', ()=>{ selected=null; document.getElementById('detail').classList.remove('show'); render(); });
+document.getElementById('listBtn').addEventListener('click', ()=> document.getElementById('listPanel').classList.toggle('show'));
+document.getElementById('listClose').addEventListener('click', ()=> document.getElementById('listPanel').classList.remove('show'));
+map.on('click', ()=>{ document.getElementById('detail').classList.remove('show'); document.getElementById('listPanel').classList.remove('show'); });
+map.on('zoomend moveend', declutter);
+
+document.querySelectorAll('#areaChips .chip[data-area]').forEach(ch => ch.addEventListener('click', ()=>{
+  document.querySelectorAll('#areaChips .chip[data-area]').forEach(x=>x.classList.remove('on'));
+  ch.classList.add('on'); fArea = ch.dataset.area; render();
+  const v = AREA_VIEW[fArea]; map.flyTo(v[0], v[1], {duration:.7});
+}));
+document.querySelectorAll('#areaChips .chip[data-cat]').forEach(ch => ch.addEventListener('click', ()=>{
+  document.querySelectorAll('#areaChips .chip[data-cat]').forEach(x=>x.classList.remove('on'));
+  ch.classList.add('on'); fCat = ch.dataset.cat; render();
+}));
+document.getElementById('search').addEventListener('input', e=>{ fQuery = e.target.value.trim().toLowerCase(); render(); });
+document.getElementById('locBtn').addEventListener('click', ()=>{
+  if(!navigator.geolocation){ alert('이 기기에서 위치를 쓸 수 없어요.'); return; }
+  navigator.geolocation.getCurrentPosition(pos=>{
+    myLatLng = [pos.coords.latitude, pos.coords.longitude];
+    L.circleMarker(myLatLng, {radius:8, color:'#2277dd', fillColor:'#2277dd', fillOpacity:.9}).addTo(map).bindPopup('내 위치');
+    PLACES.sort((a,b)=> distKm(myLatLng[0],myLatLng[1],a.lat,a.lng) - distKm(myLatLng[0],myLatLng[1],b.lat,b.lng));
+    render(); map.flyTo(myLatLng, 14);
+  }, ()=> alert('위치 권한이 필요해요. 브라우저 설정에서 허용해 주세요.'));
+});
+render();
+</script>
+</body>
+</html>
