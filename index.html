@@ -1,23 +1,25 @@
 <!DOCTYPE html>
-<html lang="ko">
+<html lang="en">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-<title>토론토 한인맛집 맵</title>
+<title>Hidden Korean — Toronto Korean Food Map</title>
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
 <style>
   * { margin:0; padding:0; box-sizing:border-box; -webkit-tap-highlight-color:transparent; }
-  html,body { height:100%; font-family:-apple-system,'Segoe UI','Malgun Gothic',sans-serif; color:#2b2620; overflow:hidden; }
+  html,body { height:100%; font-family:-apple-system,'Segoe UI',Roboto,sans-serif; color:#2b2620; overflow:hidden; }
   #map { position:fixed; inset:0; bottom:56px; z-index:1; background:#ececec; }
 
-  /* ── 슬림 헤더 (링구아도식) ── */
   .topbar { position:fixed; top:0; left:0; right:0; z-index:1200; }
   .bar { height:52px; background:rgba(255,255,255,.97); display:flex; align-items:center; padding:0 6px; box-shadow:0 1px 10px rgba(0,0,0,.10); }
-  .bar .logo { flex:1; text-align:center; font-weight:800; font-size:17.5px; letter-spacing:-.5px; }
+  .bar .logo { flex:1; text-align:center; font-weight:800; font-size:17.5px; letter-spacing:-.4px; }
   .bar .logo .pin { color:#d64541; }
   .bar .logo small { color:#a08f76; font-size:10.5px; font-weight:600; margin-left:5px; }
   .iconbtn { border:none; background:none; width:42px; height:42px; font-size:19px; cursor:pointer; border-radius:50%; }
   .iconbtn:active { background:#f1ead9; }
+  #tagline { text-align:center; padding:7px 12px 0; }
+  #tagline span { display:inline-block; background:rgba(43,38,32,.85); color:#fff; font-size:12px; font-weight:600; border-radius:999px; padding:6px 13px; }
+  #tagline b { color:#ffb3ab; }
   #searchRow { display:none; background:rgba(255,255,255,.97); padding:4px 12px 10px; }
   #searchRow.show { display:block; }
   #search { width:100%; border:1.5px solid #e3d9c6; border-radius:12px; padding:9px 12px; font-size:14px; outline:none; }
@@ -28,41 +30,42 @@
   .chip { white-space:nowrap; border:1.5px solid #e3d9c6; background:#fff; color:#5c5344; border-radius:999px; padding:6px 12px; font-size:12.5px; font-weight:700; cursor:pointer; }
   .chip.on { background:#2b2620; color:#fff; border-color:#2b2620; }
   .chip.cat.on { background:#d64541; border-color:#d64541; }
-  .sep { width:4px; flex:none; }
+  .chip.hiddenChip.on { background:#6c3483; border-color:#6c3483; color:#fff; }
 
-  /* ── 마커: 방패형 컬러 배지 + 상호명 말풍선 ── */
   .lbl-wrap { background:none; border:none; pointer-events:none; }
-  .marker { position:relative; width:150px; height:66px; pointer-events:none; }
+  .marker { position:relative; width:170px; height:66px; pointer-events:none; }
   .marker .badge { position:absolute; left:50%; top:50%; transform:translate(-50%,-50%); width:34px; height:34px; border-radius:50%; background:var(--c,#d64541); border:2.5px solid #fff; box-shadow:0 2px 8px rgba(0,0,0,.38); display:flex; align-items:center; justify-content:center; font-size:16px; pointer-events:auto; cursor:pointer; }
   .marker .badge::after { content:""; position:absolute; left:50%; transform:translateX(-50%); bottom:-7px; border:7px solid transparent; border-top:9px solid var(--c,#d64541); border-bottom:none; }
-  .marker .pill { position:absolute; left:50%; transform:translateX(-50%); bottom:52px; background:#fff; color:#2b2620; font-size:11px; font-weight:700; white-space:nowrap; padding:3.5px 8px; border-radius:999px; box-shadow:0 2px 7px rgba(0,0,0,.22); pointer-events:auto; cursor:pointer; letter-spacing:-.3px; }
+  .marker.hid .badge { outline:3px solid #a569d6; outline-offset:1px; }
+  .marker .pill { position:absolute; left:50%; transform:translateX(-50%); bottom:52px; background:#fff; color:#2b2620; font-size:11px; font-weight:700; white-space:nowrap; padding:3.5px 8px; border-radius:999px; box-shadow:0 2px 7px rgba(0,0,0,.22); pointer-events:auto; cursor:pointer; letter-spacing:-.2px; }
   .marker.down .pill { bottom:auto; top:52px; }
-  .marker.sel .badge { outline:3px solid #2b2620; }
+  .marker.sel .badge { outline:3px solid #2b2620; outline-offset:1px; }
   .marker.sel .pill { background:#2b2620; color:#fff; }
   body.zdot .marker .pill { display:none; }
   .marker .pill.collided { display:none; }
 
-  /* ── 지도 위 팝업 카드 ── */
   .kpop .leaflet-popup-content-wrapper { border-radius:16px; box-shadow:0 6px 22px rgba(0,0,0,.25); }
   .kpop .leaflet-popup-content { margin:13px 15px; font-family:inherit; line-height:1.45; }
   .kpop .p-name { font-size:16.5px; font-weight:800; letter-spacing:-.3px; }
-  .kpop .p-eng { font-size:11.5px; color:#a08f76; margin-top:1px; }
-  .kpop .p-memo { font-size:12.8px; color:#4c453a; margin-top:7px; }
+  .kpop .p-ko { font-size:12px; color:#a08f76; margin-top:1px; }
+  .kpop .p-hidden { display:block; background:#f3e8fa; color:#6c3483; font-size:11.5px; font-weight:800; border-radius:8px; padding:6px 9px; margin-top:8px; line-height:1.4; }
+  .kpop .p-order { font-size:13px; color:#4c453a; margin-top:8px; }
+  .kpop .p-order b { color:#d64541; }
   .kpop .p-addr { font-size:11.8px; color:#8a7f6d; margin-top:6px; }
   .kpop .p-tags { margin-top:8px; }
   .kpop a.p-btn { display:block; text-align:center; background:#d64541; color:#fff; text-decoration:none; font-weight:800; font-size:13.5px; border-radius:10px; padding:9px 0; margin-top:10px; }
   .tag { display:inline-block; font-size:10.5px; font-weight:700; background:#f6ecdc; color:#96762f; border-radius:6px; padding:2px 7px; margin-right:5px; }
   .tag.area { background:#e8f0e9; color:#3f7a4e; }
+  .tag.hid { background:#f3e8fa; color:#6c3483; }
 
   #countBadge { position:fixed; left:12px; bottom:88px; z-index:1100; background:rgba(43,38,32,.88); color:#fff; font-size:12.5px; font-weight:700; border-radius:999px; padding:8px 13px; }
   #locFab { position:fixed; right:14px; bottom:88px; z-index:1300; width:47px; height:47px; border-radius:50%; background:#fff; border:none; box-shadow:0 3px 12px rgba(0,0,0,.22); font-size:21px; color:#2e2440; cursor:pointer; }
 
-  /* ── 목록 뷰 ── */
   #listPanel { position:fixed; left:0; right:0; top:0; bottom:56px; background:#faf6ef; z-index:1400; transform:translateY(102%); transition:transform .25s ease; display:flex; flex-direction:column; }
   #listPanel.show { transform:translateY(0); }
   #listPanel .head { padding:18px 18px 8px; }
   #listPanel .head b { font-size:19px; }
-  #listPanel .head p { font-size:12.5px; color:#8a7f6d; margin-top:3px; }
+  #listPanel .head p { font-size:12.5px; color:#8a7f6d; margin-top:3px; line-height:1.5; }
   #list { overflow-y:auto; padding:2px 12px 26px; }
   .card { background:#fff; border:1.5px solid #eee3cf; border-radius:14px; padding:11px 13px; margin:7px 0; cursor:pointer; }
   .card.sel { border-color:#d64541; }
@@ -70,8 +73,8 @@
   .card .nm span { font-weight:600; color:#a08f76; font-size:12px; }
   .card .meta { font-size:12px; color:#8a7f6d; margin-top:2px; }
   .card .memo { font-size:12.5px; margin-top:5px; line-height:1.45; color:#4c453a; }
+  .card .memo b { color:#d64541; }
 
-  /* ── 하단 탭바 (다크 + 스카이라인) ── */
   .tabbar { position:fixed; left:0; right:0; bottom:0; height:56px; background:#2e2440; z-index:1700; display:flex; }
   .tabbar::before { content:""; position:absolute; left:0; right:0; top:-15px; height:16px; pointer-events:none;
     background:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='480' height='32' viewBox='0 0 480 32'%3E%3Cpath fill='%232e2440' d='M0 32V20h18v-6h14v6h20V10h12v22h26V16h16V8h10v24h30V18h14V8h8v10h22v14h28V12h16v20h24v-8h10V12l4-10 4 10v12h14v8h26V16h18v16h30V20h14v12h34V14h16v18h28v-6h14v6h22V18h16v14z'/%3E%3C/svg%3E") repeat-x left bottom / auto 16px; }
@@ -80,7 +83,7 @@
   .tabbar button.on { color:#ff5d73; }
 
   .leaflet-control-attribution { font-size:9px !important; background:rgba(255,255,255,.65) !important; }
-  .leaflet-control-zoom { border:none !important; box-shadow:0 2px 10px rgba(0,0,0,.15) !important; margin-top:64px !important; }
+  .leaflet-control-zoom { border:none !important; box-shadow:0 2px 10px rgba(0,0,0,.15) !important; margin-top:100px !important; }
 </style>
 </head>
 <body class="zlabel">
@@ -89,68 +92,77 @@
 
 <div class="topbar">
   <div class="bar">
-    <button class="iconbtn" id="searchBtn" aria-label="검색">🔍</button>
-    <div class="logo"><span class="pin">📍</span> 한인맛집 맵<small>v0.4</small></div>
-    <button class="iconbtn" id="filterBtn" aria-label="필터">🎛️</button>
+    <button class="iconbtn" id="searchBtn" aria-label="Search">🔍</button>
+    <div class="logo"><span class="pin">📍</span> Hidden Korean<small>TORONTO · v0.5</small></div>
+    <button class="iconbtn" id="filterBtn" aria-label="Filters">🎛️</button>
   </div>
-  <div id="searchRow"><input id="search" type="search" placeholder="검색 (순두부, 달동네…)"></div>
+  <div id="tagline"><span>The Korean food <b>Google Maps won't show you</b></span></div>
+  <div id="searchRow"><input id="search" type="search" placeholder="Search a dish: gamjatang, jajangmyeon, soju…"></div>
   <div id="filterPanel">
+    <div class="chipRow">
+      <button class="chip hiddenChip" id="hiddenChip">💎 Hidden Korean only</button>
+    </div>
     <div class="chipRow" id="areaChips">
-      <button class="chip on" data-area="all">전체</button>
-      <button class="chip" data-area="koreatown">코리아타운</button>
-      <button class="chip" data-area="northyork">노스욕</button>
+      <button class="chip on" data-area="all">All areas</button>
+      <button class="chip" data-area="koreatown">Koreatown</button>
+      <button class="chip" data-area="northyork">North York</button>
+      <button class="chip" data-area="midtown">Midtown</button>
     </div>
     <div class="chipRow" id="catChips">
-      <button class="chip cat on" data-cat="all">분류 전체</button>
-      <button class="chip cat" data-cat="고기">고기·구이</button>
-      <button class="chip cat" data-cat="탕찌개">탕·찌개</button>
-      <button class="chip cat" data-cat="치킨">치킨</button>
-      <button class="chip cat" data-cat="분식">분식</button>
-      <button class="chip cat" data-cat="집밥">집밥·한식</button>
+      <button class="chip cat on" data-cat="all">All food</button>
+      <button class="chip cat" data-cat="bbq">K-BBQ</button>
+      <button class="chip cat" data-cat="soup">Soups & Stews</button>
+      <button class="chip cat" data-cat="chicken">Fried Chicken</button>
+      <button class="chip cat" data-cat="kchinese">Korean-Chinese</button>
+      <button class="chip cat" data-cat="pub">Pub & Pocha</button>
+      <button class="chip cat" data-cat="snack">Snacks</button>
+      <button class="chip cat" data-cat="home">Home-style</button>
     </div>
   </div>
 </div>
 
-<div id="countBadge">16곳</div>
-<button id="locFab" aria-label="내 위치">◎</button>
+<div id="countBadge">18 places</div>
+<button id="locFab" aria-label="My location">◎</button>
 
 <div id="listPanel">
-  <div class="head"><b>한인식당 목록</b><p>카드를 누르면 지도에서 팝업으로 열려요</p></div>
+  <div class="head"><b>All the Korean spots</b><p>Including the ones map apps file under "Chinese", "cocktail bar" or just "noodles" — tap 💎 Hidden Korean in filters to see only those.</p></div>
   <div id="list"></div>
 </div>
 
 <nav class="tabbar">
-  <button id="tabMap" class="on"><span class="ic">🗺️</span>지도</button>
-  <button id="tabList"><span class="ic">☰</span>목록</button>
+  <button id="tabMap" class="on"><span class="ic">🗺️</span>Map</button>
+  <button id="tabList"><span class="ic">☰</span>List</button>
 </nav>
 
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <script>
 const PLACES = [
-  {name:"Daldongnae Korean BBQ (Christie)", ko:"달동네", area:"koreatown", cat:"고기", addr:"658 Bloor St W, Toronto", lat:43.664236, lng:-79.415661, memo:"코리아타운 대표 고깃집. 삼겹살과 갈비, 기본으로 나오는 된장찌개와 반찬이 강점. 저녁엔 웨이팅이 잦다.", kw:"달동네 고기 삼겹살 갈비 바베큐 bbq"},
-  {name:"Arisu Korean BBQ", ko:"아리수", area:"koreatown", cat:"고기", addr:"584 Bloor St W, Toronto", lat:43.665100, lng:-79.412650, memo:"블루어 동쪽 끝 고기·스시 집. 점심 특선과 구이 세트가 무난하다.", kw:"아리수 고기 스시 bbq"},
-  {name:"Korean Village Restaurant", ko:"코리아빌리지", area:"koreatown", cat:"고기", addr:"628 Bloor St W, Toronto", lat:43.664610, lng:-79.414440, memo:"오래된 코리아타운 터줏대감. 테이블 구이와 전통 한식 메뉴가 넓게 있다.", kw:"코리아빌리지 한식 구이 전통"},
-  {name:"Sunrise House", ko:"선라이스하우스", area:"koreatown", cat:"집밥", addr:"661 Bloor St W, Toronto", lat:43.664096, lng:-79.415674, memo:"집밥 스타일 작은 식당. 감자탕, 돌솥비빔밥, 김치볶음밥이 양 많고 가격 착하기로 유명하다.", kw:"선라이스 감자탕 비빔밥 집밥 김치볶음밥"},
-  {name:"Jin Dal Lae", ko:"진달래", area:"koreatown", cat:"집밥", addr:"647 Bloor St W, Toronto", lat:43.664200, lng:-79.415186, memo:"냉면과 해물파전, 김치전이 인기. 양이 많고 편안한 분위기.", kw:"진달래 냉면 파전 해물파전 김치전"},
-  {name:"Buk Chang Dong Soon Tofu (Bloor)", ko:"북창동순두부", area:"koreatown", cat:"탕찌개", addr:"691 Bloor St W, Toronto", lat:43.663708, lng:-79.417074, memo:"보글보글 순두부찌개와 돌솥밥 전문. 춥거나 해장하고 싶은 날 1순위.", kw:"북창동 순두부 찌개 돌솥밥 해장"},
-  {name:"The Owl on Bloor", ko:"부엉이 (블루어)", area:"koreatown", cat:"탕찌개", addr:"700 Bloor St W, Toronto", lat:43.663832, lng:-79.417492, memo:"늦은 시간까지 여는 감자탕 집. 불고기와 비빔밥도 있고 밤에 갈 데 없을 때 든든하다.", kw:"부엉이 올빼미 감자탕 심야 늦게 불고기"},
-  {name:"Daldongnae Korean BBQ (North York)", ko:"달동네 노스욕", area:"northyork", cat:"고기", addr:"6034 Yonge St, North York", lat:43.789710, lng:-79.418250, memo:"노스욕 달동네. 숯불 구이와 무제한 반찬, 주말 저녁은 예약이 안전하다.", kw:"달동네 고기 삼겹살 갈비 bbq 숯불"},
-  {name:"Hanyang Jokbal", ko:"한양족발", area:"northyork", cat:"고기", addr:"6016 Yonge St, North York", lat:43.789020, lng:-79.418310, memo:"족발 전문. 여럿이 나눠 먹기 좋고 포장 손님도 많다.", kw:"한양 족발 보쌈"},
-  {name:"Mapo Gamjatang", ko:"마포감자탕", area:"northyork", cat:"탕찌개", addr:"4916 Yonge St, North York", lat:43.764235, lng:-79.411878, memo:"감자탕 전문점. 큰 냄비에 푸짐하게 나오고 늦게까지 연다.", kw:"마포 감자탕 해장 뼈다귀"},
-  {name:"The Famous Owl of Minerva", ko:"부엉이 (노스욕)", area:"northyork", cat:"탕찌개", addr:"5324 Yonge St, North York", lat:43.773258, lng:-79.414293, memo:"노스욕의 오래된 감자탕·한식 집. 밤늦게도 한식이 먹고 싶을 때 가는 곳.", kw:"부엉이 올빼미 미네르바 감자탕 심야 24시"},
-  {name:"Buk Chang Dong Soon Tofu (North York)", ko:"북창동순두부 노스욕", area:"northyork", cat:"탕찌개", addr:"5445 Yonge St, North York", lat:43.777120, lng:-79.414707, memo:"순두부찌개와 돌솥 흑미밥. 빠르고 가격 부담이 적다.", kw:"북창동 순두부 찌개 돌솥밥"},
-  {name:"Kayagum", ko:"가야금", area:"northyork", cat:"집밥", addr:"5460 Yonge St, North York", lat:43.777419, lng:-79.415141, memo:"넓고 전통적인 분위기의 한식당. 짬뽕, 뚝배기불고기, 냉면까지 메뉴 폭이 넓고 늦게까지 연다.", kw:"가야금 짬뽕 불고기 냉면 한식"},
-  {name:"Chicken in the Kitchen", ko:"치킨인더키친", area:"northyork", cat:"치킨", addr:"5600 Yonge St, North York", lat:43.779499, lng:-79.415909, memo:"치즈 볼케이노 치킨으로 유명한 한국식 치킨집. 치맥 하기 좋은 분위기, 새벽까지 연다.", kw:"치킨인더키친 치킨 치맥 볼케이노"},
-  {name:"The Fry", ko:"더프라이", area:"northyork", cat:"치킨", addr:"4864 Yonge St, North York", lat:43.762940, lng:-79.411600, memo:"한국식 프라이드치킨 체인. 양념/간장 등 무난한 치맥 선택지.", kw:"더프라이 치킨 양념치킨 치맥"},
-  {name:"Kimbap KarahOn", ko:"김밥 가라온", area:"northyork", cat:"분식", addr:"5418 Yonge St Unit 18, North York", lat:43.775507, lng:-79.414759, memo:"김밥 전문 테이크아웃. 유부우엉, 와사비 게살 같은 시그니처 롤이 속이 꽉 차 있다. 점심용으로 딱.", kw:"김밥 분식 가라온 테이크아웃"}
+  {name:"Daldongnae Korean BBQ (Christie)", short:"Daldongnae", ko:"달동네", area:"koreatown", cat:"bbq", addr:"658 Bloor St W, Toronto", lat:43.664236, lng:-79.415661, order:"Pork belly and galbi (short ribs). Banchan (side dishes) are free and refillable, and a soybean stew comes with the grill.", kw:"bbq grill pork belly galbi samgyeopsal 고기"},
+  {name:"Arisu Korean BBQ", short:"Arisu", ko:"아리수", area:"koreatown", cat:"bbq", addr:"584 Bloor St W, Toronto", lat:43.665100, lng:-79.412650, order:"Grill sets and lunch specials; it doubles as a sushi spot, handy for mixed groups.", kw:"bbq sushi grill 고기"},
+  {name:"Korean Village Restaurant", short:"Korean Village", ko:"코리아빌리지", area:"koreatown", cat:"bbq", addr:"628 Bloor St W, Toronto", lat:43.664610, lng:-79.414440, order:"Hot-stone bibimbap and tabletop grilling. Family-run since 1978 — one of the oldest Korean restaurants in the city.", kw:"bibimbap grill traditional since 1978 비빔밥"},
+  {name:"Sunrise House", short:"Sunrise House", ko:"선라이스하우스", area:"koreatown", cat:"home", addr:"661 Bloor St W, Toronto", lat:43.664096, lng:-79.415674, order:"Gamjatang (pork-bone soup) or a sizzling stone-pot bibimbap. Big portions, small prices — proper Korean home cooking.", kw:"gamjatang bibimbap home style pork bone soup 감자탕"},
+  {name:"Jin Dal Lae", short:"Jin Dal Lae", ko:"진달래", area:"koreatown", cat:"home", addr:"647 Bloor St W, Toronto", lat:43.664200, lng:-79.415186, order:"Naengmyeon — icy buckwheat noodles, sweet-tangy and refreshing — plus a crispy seafood pancake (haemul pajeon).", kw:"naengmyeon cold noodles pajeon pancake 냉면"},
+  {name:"Buk Chang Dong Soon Tofu (Bloor)", short:"Buk Chang Dong", ko:"북창동순두부", area:"koreatown", cat:"soup", addr:"691 Bloor St W, Toronto", lat:43.663708, lng:-79.417074, order:"Sundubu-jjigae: silken tofu stew arriving bubbling in a stone bowl, with stone-pot rice. Pick your spice level.", kw:"soon tofu sundubu stew spicy 순두부"},
+  {name:"The Owl on Bloor", short:"Owl (Bloor)", ko:"부엉이", area:"koreatown", cat:"soup", addr:"700 Bloor St W, Toronto", lat:43.663832, lng:-79.417492, order:"Gamjatang (pork-bone soup) — and it stays open very late, which is exactly when you want it.", kw:"gamjatang late night pork bone soup 감자탕"},
+  {name:"Mapo Pocha Soju Bar", short:"Mapo Pocha", ko:"마포포차", area:"koreatown", cat:"pub", addr:"680 Bloor St W, Toronto", lat:43.664005, lng:-79.416732, hidden:"Cocktail Bar", order:"This is a pocha — Korea's beloved pub format: flavoured soju cocktails plus anju (food made for drinking). Get the rosé tteokbokki and a seafood pancake.", kw:"pocha soju bar pub drinks tteokbokki 술집 포차"},
+  {name:"Daldongnae Korean BBQ (North York)", short:"Daldongnae NY", ko:"달동네 노스욕", area:"northyork", cat:"bbq", addr:"6034 Yonge St, North York", lat:43.789710, lng:-79.418250, order:"Charcoal-grilled meats with unlimited banchan. Book ahead on weekend evenings.", kw:"bbq charcoal grill pork belly 숯불"},
+  {name:"Hanyang Jokbal", short:"Hanyang Jokbal", ko:"한양족발", area:"northyork", cat:"home", addr:"6016 Yonge St, North York", lat:43.789020, lng:-79.418310, order:"Jokbal — pork trotter braised in soy and spices, sliced thin. Wrap a slice in lettuce with garlic and ssamjang. Made for sharing (and soju).", kw:"jokbal pork trotter bossam 족발"},
+  {name:"Mapo Gamjatang", short:"Mapo Gamjatang", ko:"마포감자탕", area:"northyork", cat:"soup", addr:"4916 Yonge St, North York", lat:43.764235, lng:-79.411878, order:"One big shared pot of gamjatang — pork bones, potatoes and wild sesame leaves in a rich broth. Finish the leftover broth with fried rice.", kw:"gamjatang pork bone soup shared pot 감자탕"},
+  {name:"The Famous Owl of Minerva", short:"Owl (North York)", ko:"부엉이 노스욕", area:"northyork", cat:"soup", addr:"5324 Yonge St, North York", lat:43.773258, lng:-79.414293, order:"The North York late-night institution for gamjatang. When everything else is closed, the Owl is open.", kw:"gamjatang late night 24h owl 감자탕"},
+  {name:"Buk Chang Dong Soon Tofu (North York)", short:"Buk Chang Dong NY", ko:"북창동순두부 노스욕", area:"northyork", cat:"soup", addr:"5445 Yonge St, North York", lat:43.777120, lng:-79.414707, order:"Sundubu-jjigae with purple stone-pot rice. Fast, filling, easy on the wallet.", kw:"soon tofu sundubu stew 순두부"},
+  {name:"Kayagum", short:"Kayagum", ko:"가야금", area:"northyork", cat:"home", addr:"5460 Yonge St, North York", lat:43.777419, lng:-79.415141, order:"A big, traditional room with a huge menu — jjamppong (spicy seafood noodles), ttukbaegi bulgogi and cold noodles all work.", kw:"jjamppong bulgogi naengmyeon traditional 짬뽕"},
+  {name:"Chicken in the Kitchen", short:"Chicken in the Kitchen", ko:"치킨인더키친", area:"northyork", cat:"chicken", addr:"5600 Yonge St, North York", lat:43.779499, lng:-79.415909, order:"Cheese Volcano Chicken. This is chimaek culture — Korean fried chicken + beer — done loud and late.", kw:"fried chicken chimaek cheese volcano beer 치킨 치맥"},
+  {name:"The Fry", short:"The Fry", ko:"더프라이", area:"northyork", cat:"chicken", addr:"4864 Yonge St, North York", lat:43.762940, lng:-79.411600, order:"Classic Korean fried chicken — get the yangnyeom (sticky sweet-spicy glaze) half-and-half with plain fried.", kw:"fried chicken yangnyeom 치킨 양념"},
+  {name:"Kimbap KarahOn", short:"Kimbap KarahOn", ko:"김밥 가라온", area:"northyork", cat:"snack", addr:"5418 Yonge St Unit 18, North York", lat:43.775507, lng:-79.414759, order:"Kimbap — Korea's seaweed rice rolls, generously stuffed (try yubu-burdock or wasabi crab). Takeout lunch perfection.", kw:"kimbap gimbap rolls takeout snack 김밥"},
+  {name:"Kim's Noodle", short:"Kim's Noodle", ko:"김스누들", area:"midtown", cat:"kchinese", addr:"30 Eglinton Ave E, Toronto", lat:43.707187, lng:-79.397395, hidden:"Noodle House", order:"Korean-Chinese food — a whole cuisine born in Korea. Jajangmyeon (noodles in black-bean sauce) is Korea's #1 comfort delivery food; pair it with jjamppong (spicy seafood noodle soup) or tangsuyuk (sweet-sour pork).", kw:"jajangmyeon jjajang jjamppong korean chinese noodles black bean 자장면 짬뽕"}
 ];
 
-const AREA_NAME = {koreatown:"코리아타운", northyork:"노스욕"};
-const CAT_NAME = {고기:"고기·구이", 탕찌개:"탕·찌개", 치킨:"치킨", 분식:"분식", 집밥:"집밥·한식"};
-const CAT_EMOJI = {고기:"🍖", 탕찌개:"🍲", 치킨:"🍗", 분식:"🍙", 집밥:"🍚"};
-const CAT_COLOR = {고기:"#d64541", 탕찌개:"#e8833a", 치킨:"#d99a17", 분식:"#3f7a4e", 집밥:"#5b7fb4"};
-const AREA_VIEW = {all:[[43.727,-79.415],11], koreatown:[[43.6643,-79.4155],15], northyork:[[43.7765,-79.4145],14]};
-let fArea="all", fCat="all", fQuery="", myLatLng=null, selected=null;
+const AREA_NAME = {koreatown:"Koreatown", northyork:"North York", midtown:"Midtown"};
+const CAT_NAME = {bbq:"K-BBQ", soup:"Soups & Stews", chicken:"Fried Chicken", kchinese:"Korean-Chinese", pub:"Pub & Pocha", snack:"Snacks", home:"Home-style"};
+const CAT_EMOJI = {bbq:"🍖", soup:"🍲", chicken:"🍗", kchinese:"🍜", pub:"🍶", snack:"🍙", home:"🍚"};
+const CAT_COLOR = {bbq:"#d64541", soup:"#e8833a", chicken:"#d99a17", kchinese:"#8e44ad", pub:"#374785", snack:"#3f7a4e", home:"#5b7fb4"};
+const AREA_VIEW = {all:[[43.727,-79.41],11], koreatown:[[43.6643,-79.4155],15], northyork:[[43.7765,-79.4145],14], midtown:[[43.7072,-79.3974],14]};
+let fArea="all", fCat="all", fQuery="", fHidden=false, myLatLng=null, selected=null;
 
 const map = L.map('map', {zoomControl:true}).setView([43.6643,-79.4155], 15);
 L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Light_Gray_Base/MapServer/tile/{z}/{y}/{x}', {
@@ -166,17 +178,20 @@ function filtered(){
   return PLACES.filter(p =>
     (fArea==="all" || p.area===fArea) &&
     (fCat==="all" || p.cat===fCat) &&
-    (!fQuery || (p.name+" "+p.ko+" "+p.kw+" "+p.memo).toLowerCase().includes(fQuery))
+    (!fHidden || p.hidden) &&
+    (!fQuery || (p.name+" "+p.ko+" "+p.kw+" "+p.order).toLowerCase().includes(fQuery))
   );
 }
 
 function popupHtml(p){
-  const d = myLatLng ? ` · ${distKm(myLatLng[0],myLatLng[1],p.lat,p.lng).toFixed(1)}km` : "";
-  return `<div class="p-name">${p.ko}</div><div class="p-eng">${p.name}</div>
-  <div class="p-memo">${p.memo}</div>
+  const d = myLatLng ? ` · ${distKm(myLatLng[0],myLatLng[1],p.lat,p.lng).toFixed(1)}km away` : "";
+  const hid = p.hidden ? `<span class="p-hidden">💎 HIDDEN KOREAN — map apps list this as "${p.hidden}". It's Korean.</span>` : "";
+  return `<div class="p-name">${p.name}</div><div class="p-ko">${p.ko} · ${AREA_NAME[p.area]}</div>
+  ${hid}
+  <div class="p-order"><b>Order this:</b> ${p.order}</div>
   <div class="p-addr">${p.addr}${d}</div>
-  <div class="p-tags"><span class="tag area">${AREA_NAME[p.area]}</span><span class="tag">${CAT_NAME[p.cat]}</span></div>
-  <a class="p-btn" target="_blank" rel="noopener" href="https://www.google.com/maps/dir/?api=1&destination=${gq(p)}">길찾기 · 구글맵</a>`;
+  <div class="p-tags"><span class="tag area">${AREA_NAME[p.area]}</span><span class="tag">${CAT_NAME[p.cat]}</span>${p.hidden?'<span class="tag hid">💎 Hidden</span>':''}</div>
+  <a class="p-btn" target="_blank" rel="noopener" href="https://www.google.com/maps/dir/?api=1&destination=${gq(p)}">Directions · Google Maps</a>`;
 }
 
 function declutter(){
@@ -203,24 +218,24 @@ function render(){
   layer.clearLayers(); markerObjs = [];
   list.forEach((p,i)=>{
     const down = i % 2 === 1;
-    const icon = L.divIcon({className:"lbl-wrap", iconSize:[150,66], iconAnchor:[75,33],
-      html:`<div class="marker ${down?'down':''} ${selected===p?'sel':''}" style="--c:${CAT_COLOR[p.cat]}"><div class="pill">${p.ko}</div><div class="badge">${CAT_EMOJI[p.cat]}</div></div>`});
+    const icon = L.divIcon({className:"lbl-wrap", iconSize:[170,66], iconAnchor:[85,33],
+      html:`<div class="marker ${down?'down':''} ${selected===p?'sel':''} ${p.hidden?'hid':''}" style="--c:${CAT_COLOR[p.cat]}"><div class="pill">${p.hidden?'💎 ':''}${p.short}</div><div class="badge">${CAT_EMOJI[p.cat]}</div></div>`});
     const m = L.marker([p.lat,p.lng], {icon});
     m._place = p;
-    m.bindPopup(popupHtml(p), {closeButton:false, className:'kpop', offset:[0,-18], maxWidth:270});
+    m.bindPopup(popupHtml(p), {closeButton:false, className:'kpop', offset:[0,-18], maxWidth:280});
     m.on('click', ()=>{ selected = p; });
     m.addTo(layer); markerObjs.push({p, marker:m});
   });
-  document.getElementById('countBadge').textContent = `식당 ${list.length}곳`;
+  document.getElementById('countBadge').textContent = `${list.length} places`;
   const el = document.getElementById('list');
   el.innerHTML = list.map(p=>{
     const d = myLatLng ? ` · ${distKm(myLatLng[0],myLatLng[1],p.lat,p.lng).toFixed(1)}km` : "";
     return `<div class="card ${selected===p?'sel':''}" data-i="${PLACES.indexOf(p)}">
-      <div class="nm">${CAT_EMOJI[p.cat]} ${p.ko} <span>${p.name}</span></div>
+      <div class="nm">${CAT_EMOJI[p.cat]} ${p.name} <span>${p.ko}</span></div>
       <div class="meta">${p.addr}${d}</div>
-      <div style="margin-top:6px"><span class="tag area">${AREA_NAME[p.area]}</span><span class="tag">${CAT_NAME[p.cat]}</span></div>
-      <div class="memo">${p.memo}</div></div>`;
-  }).join("") || `<p style="padding:16px;color:#8a7f6d">조건에 맞는 식당이 없어요. 필터를 풀어보세요.</p>`;
+      <div style="margin-top:6px"><span class="tag area">${AREA_NAME[p.area]}</span><span class="tag">${CAT_NAME[p.cat]}</span>${p.hidden?`<span class="tag hid">💎 Hidden · listed as "${p.hidden}"</span>`:''}</div>
+      <div class="memo"><b>Order this:</b> ${p.order}</div></div>`;
+  }).join("") || `<p style="padding:16px;color:#8a7f6d">Nothing matches. Loosen the filters a little.</p>`;
   el.querySelectorAll('.card').forEach(c => c.addEventListener('click', ()=>{
     const p = PLACES[+c.dataset.i];
     showTab('map');
@@ -244,6 +259,9 @@ document.getElementById('searchBtn').addEventListener('click', ()=>{
   if(r.classList.contains('show')) document.getElementById('search').focus();
 });
 document.getElementById('filterBtn').addEventListener('click', ()=> document.getElementById('filterPanel').classList.toggle('show'));
+document.getElementById('hiddenChip').addEventListener('click', e=>{
+  fHidden = !fHidden; e.currentTarget.classList.toggle('on', fHidden); render();
+});
 map.on('zoomend moveend', declutter);
 
 document.querySelectorAll('#areaChips .chip[data-area]').forEach(ch => ch.addEventListener('click', ()=>{
@@ -257,14 +275,14 @@ document.querySelectorAll('#catChips .chip[data-cat]').forEach(ch => ch.addEvent
 }));
 document.getElementById('search').addEventListener('input', e=>{ fQuery = e.target.value.trim().toLowerCase(); render(); });
 document.getElementById('locFab').addEventListener('click', ()=>{
-  if(!navigator.geolocation){ alert('이 기기에서 위치를 쓸 수 없어요.'); return; }
+  if(!navigator.geolocation){ alert('Location is not available on this device.'); return; }
   navigator.geolocation.getCurrentPosition(pos=>{
     myLatLng = [pos.coords.latitude, pos.coords.longitude];
     showTab('map');
-    L.circleMarker(myLatLng, {radius:8, color:'#2277dd', fillColor:'#2277dd', fillOpacity:.9}).addTo(map).bindPopup('내 위치');
+    L.circleMarker(myLatLng, {radius:8, color:'#2277dd', fillColor:'#2277dd', fillOpacity:.9}).addTo(map).bindPopup('You are here');
     PLACES.sort((a,b)=> distKm(myLatLng[0],myLatLng[1],a.lat,a.lng) - distKm(myLatLng[0],myLatLng[1],b.lat,b.lng));
     render(); map.flyTo(myLatLng, 14);
-  }, ()=> alert('위치 권한이 필요해요. 브라우저 설정에서 허용해 주세요.'));
+  }, ()=> alert('Location permission is needed for this.'));
 });
 render();
 </script>
