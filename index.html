@@ -10,32 +10,35 @@
   html,body { height:100%; font-family:-apple-system,'Segoe UI','Malgun Gothic',sans-serif; color:#2b2620; overflow:hidden; }
   #map { position:fixed; inset:0; bottom:56px; z-index:1; background:#ececec; }
 
-  /* ── 상단 플로팅 바 ── */
-  .topbar { position:fixed; top:0; left:0; right:0; z-index:1200; padding:10px 12px 0; pointer-events:none; }
-  .topbar > * { pointer-events:auto; }
-  .titleRow { display:flex; align-items:center; gap:8px; }
-  .titleCard { background:rgba(255,255,255,.94); border-radius:14px; padding:8px 13px; box-shadow:0 2px 10px rgba(0,0,0,.13); font-weight:800; font-size:16px; letter-spacing:-.4px; white-space:nowrap; }
-  .titleCard small { display:block; font-size:11px; font-weight:600; color:#8a7f6d; margin-top:1px; }
-  #search { flex:1; border:none; border-radius:14px; padding:11px 13px; font-size:14px; background:rgba(255,255,255,.94); box-shadow:0 2px 10px rgba(0,0,0,.13); outline:none; min-width:0; }
-  .chipRow { display:flex; gap:6px; overflow-x:auto; padding:8px 0 2px; scrollbar-width:none; }
+  /* ── 슬림 헤더 (링구아도식) ── */
+  .topbar { position:fixed; top:0; left:0; right:0; z-index:1200; }
+  .bar { height:52px; background:rgba(255,255,255,.97); display:flex; align-items:center; padding:0 6px; box-shadow:0 1px 10px rgba(0,0,0,.10); }
+  .bar .logo { flex:1; text-align:center; font-weight:800; font-size:17.5px; letter-spacing:-.5px; }
+  .bar .logo .pin { color:#d64541; }
+  .bar .logo small { color:#a08f76; font-size:10.5px; font-weight:600; margin-left:5px; }
+  .iconbtn { border:none; background:none; width:42px; height:42px; font-size:19px; cursor:pointer; border-radius:50%; }
+  .iconbtn:active { background:#f1ead9; }
+  #searchRow { display:none; background:rgba(255,255,255,.97); padding:4px 12px 10px; }
+  #searchRow.show { display:block; }
+  #search { width:100%; border:1.5px solid #e3d9c6; border-radius:12px; padding:9px 12px; font-size:14px; outline:none; }
+  #filterPanel { display:none; background:rgba(255,255,255,.97); padding:8px 12px 10px; box-shadow:0 8px 14px rgba(0,0,0,.08); }
+  #filterPanel.show { display:block; }
+  .chipRow { display:flex; gap:6px; overflow-x:auto; padding:3px 0; scrollbar-width:none; }
   .chipRow::-webkit-scrollbar { display:none; }
-  .chip { white-space:nowrap; border:none; background:rgba(255,255,255,.94); color:#5c5344; border-radius:999px; padding:7px 12px; font-size:12.5px; font-weight:700; cursor:pointer; box-shadow:0 2px 8px rgba(0,0,0,.12); }
-  .chip.on { background:#2b2620; color:#fff; }
-  .chip.cat.on { background:#d64541; color:#fff; }
+  .chip { white-space:nowrap; border:1.5px solid #e3d9c6; background:#fff; color:#5c5344; border-radius:999px; padding:6px 12px; font-size:12.5px; font-weight:700; cursor:pointer; }
+  .chip.on { background:#2b2620; color:#fff; border-color:#2b2620; }
+  .chip.cat.on { background:#d64541; border-color:#d64541; }
   .sep { width:4px; flex:none; }
 
-  /* ── 마커: 원형 배지 + 상호명 말풍선 ── */
+  /* ── 마커: 방패형 컬러 배지 + 상호명 말풍선 ── */
   .lbl-wrap { background:none; border:none; pointer-events:none; }
-  .marker { position:relative; width:150px; height:58px; pointer-events:none; }
-  .marker .badge { position:absolute; left:50%; top:50%; transform:translate(-50%,-50%); width:28px; height:28px; border-radius:50%; background:#fff; border:2px solid #fff; box-shadow:0 2px 7px rgba(0,0,0,.35); display:flex; align-items:center; justify-content:center; font-size:14.5px; pointer-events:auto; cursor:pointer; }
-  .marker .pill { position:absolute; left:50%; transform:translateX(-50%); bottom:45px; background:#fff; color:#2b2620; font-size:11.5px; font-weight:700; white-space:nowrap; padding:4px 9px; border-radius:999px; box-shadow:0 2px 7px rgba(0,0,0,.22); pointer-events:auto; cursor:pointer; letter-spacing:-.3px; }
-  .marker .pill::after { content:""; position:absolute; left:50%; transform:translateX(-50%); bottom:-4px; border:4.5px solid transparent; border-top-color:#fff; border-bottom:none; }
-  .marker.down .pill { bottom:auto; top:45px; }
-  .marker.down .pill::after { bottom:auto; top:-4px; border-top:none; border-bottom:4.5px solid #fff; }
-  .marker.sel .badge { background:#d64541; border-color:#d64541; }
-  .marker.sel .pill { background:#d64541; color:#fff; font-size:13px; padding:6px 12px; }
-  .marker.sel .pill::after { border-top-color:#d64541; }
-  .marker.sel.down .pill::after { border-top-color:transparent; border-bottom-color:#d64541; }
+  .marker { position:relative; width:150px; height:66px; pointer-events:none; }
+  .marker .badge { position:absolute; left:50%; top:50%; transform:translate(-50%,-50%); width:34px; height:34px; border-radius:50%; background:var(--c,#d64541); border:2.5px solid #fff; box-shadow:0 2px 8px rgba(0,0,0,.38); display:flex; align-items:center; justify-content:center; font-size:16px; pointer-events:auto; cursor:pointer; }
+  .marker .badge::after { content:""; position:absolute; left:50%; transform:translateX(-50%); bottom:-7px; border:7px solid transparent; border-top:9px solid var(--c,#d64541); border-bottom:none; }
+  .marker .pill { position:absolute; left:50%; transform:translateX(-50%); bottom:52px; background:#fff; color:#2b2620; font-size:11px; font-weight:700; white-space:nowrap; padding:3.5px 8px; border-radius:999px; box-shadow:0 2px 7px rgba(0,0,0,.22); pointer-events:auto; cursor:pointer; letter-spacing:-.3px; }
+  .marker.down .pill { bottom:auto; top:52px; }
+  .marker.sel .badge { outline:3px solid #2b2620; }
+  .marker.sel .pill { background:#2b2620; color:#fff; }
   body.zdot .marker .pill { display:none; }
   .marker .pill.collided { display:none; }
 
@@ -51,10 +54,10 @@
   .tag { display:inline-block; font-size:10.5px; font-weight:700; background:#f6ecdc; color:#96762f; border-radius:6px; padding:2px 7px; margin-right:5px; }
   .tag.area { background:#e8f0e9; color:#3f7a4e; }
 
-  /* ── 개수 배지 ── */
-  #countBadge { position:fixed; left:12px; bottom:70px; z-index:1100; background:rgba(43,38,32,.88); color:#fff; font-size:12.5px; font-weight:700; border-radius:999px; padding:8px 13px; }
+  #countBadge { position:fixed; left:12px; bottom:88px; z-index:1100; background:rgba(43,38,32,.88); color:#fff; font-size:12.5px; font-weight:700; border-radius:999px; padding:8px 13px; }
+  #locFab { position:fixed; right:14px; bottom:88px; z-index:1300; width:47px; height:47px; border-radius:50%; background:#fff; border:none; box-shadow:0 3px 12px rgba(0,0,0,.22); font-size:21px; color:#2e2440; cursor:pointer; }
 
-  /* ── 목록 뷰 (탭 전환) ── */
+  /* ── 목록 뷰 ── */
   #listPanel { position:fixed; left:0; right:0; top:0; bottom:56px; background:#faf6ef; z-index:1400; transform:translateY(102%); transition:transform .25s ease; display:flex; flex-direction:column; }
   #listPanel.show { transform:translateY(0); }
   #listPanel .head { padding:18px 18px 8px; }
@@ -68,14 +71,16 @@
   .card .meta { font-size:12px; color:#8a7f6d; margin-top:2px; }
   .card .memo { font-size:12.5px; margin-top:5px; line-height:1.45; color:#4c453a; }
 
-  /* ── 하단 탭바 ── */
-  .tabbar { position:fixed; left:0; right:0; bottom:0; height:56px; background:rgba(255,255,255,.97); border-top:1px solid #e8e0cd; z-index:1700; display:flex; }
-  .tabbar button { flex:1; border:none; background:none; font-size:12px; font-weight:700; color:#a08f76; cursor:pointer; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:2px; }
+  /* ── 하단 탭바 (다크 + 스카이라인) ── */
+  .tabbar { position:fixed; left:0; right:0; bottom:0; height:56px; background:#2e2440; z-index:1700; display:flex; }
+  .tabbar::before { content:""; position:absolute; left:0; right:0; top:-15px; height:16px; pointer-events:none;
+    background:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='480' height='32' viewBox='0 0 480 32'%3E%3Cpath fill='%232e2440' d='M0 32V20h18v-6h14v6h20V10h12v22h26V16h16V8h10v24h30V18h14V8h8v10h22v14h28V12h16v20h24v-8h10V12l4-10 4 10v12h14v8h26V16h18v16h30V20h14v12h34V14h16v18h28v-6h14v6h22V18h16v14z'/%3E%3C/svg%3E") repeat-x left bottom / auto 16px; }
+  .tabbar button { flex:1; border:none; background:none; font-size:12px; font-weight:700; color:#a99cc9; cursor:pointer; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:2px; }
   .tabbar button .ic { font-size:19px; line-height:1; }
-  .tabbar button.on { color:#d64541; }
+  .tabbar button.on { color:#ff5d73; }
 
   .leaflet-control-attribution { font-size:9px !important; background:rgba(255,255,255,.65) !important; }
-  .leaflet-control-zoom { border:none !important; box-shadow:0 2px 10px rgba(0,0,0,.15) !important; margin-top:118px !important; }
+  .leaflet-control-zoom { border:none !important; box-shadow:0 2px 10px rgba(0,0,0,.15) !important; margin-top:64px !important; }
 </style>
 </head>
 <body class="zlabel">
@@ -83,25 +88,31 @@
 <div id="map"></div>
 
 <div class="topbar">
-  <div class="titleRow">
-    <div class="titleCard">📍 한인맛집 맵<small>토론토 · 시제품 v0.3</small></div>
-    <input id="search" type="search" placeholder="검색 (순두부, 달동네…)">
+  <div class="bar">
+    <button class="iconbtn" id="searchBtn" aria-label="검색">🔍</button>
+    <div class="logo"><span class="pin">📍</span> 한인맛집 맵<small>v0.4</small></div>
+    <button class="iconbtn" id="filterBtn" aria-label="필터">🎛️</button>
   </div>
-  <div class="chipRow" id="areaChips">
-    <button class="chip on" data-area="all">전체</button>
-    <button class="chip" data-area="koreatown">코리아타운</button>
-    <button class="chip" data-area="northyork">노스욕</button>
-    <span class="sep"></span>
-    <button class="chip cat on" data-cat="all">분류 전체</button>
-    <button class="chip cat" data-cat="고기">고기·구이</button>
-    <button class="chip cat" data-cat="탕찌개">탕·찌개</button>
-    <button class="chip cat" data-cat="치킨">치킨</button>
-    <button class="chip cat" data-cat="분식">분식</button>
-    <button class="chip cat" data-cat="집밥">집밥·한식</button>
+  <div id="searchRow"><input id="search" type="search" placeholder="검색 (순두부, 달동네…)"></div>
+  <div id="filterPanel">
+    <div class="chipRow" id="areaChips">
+      <button class="chip on" data-area="all">전체</button>
+      <button class="chip" data-area="koreatown">코리아타운</button>
+      <button class="chip" data-area="northyork">노스욕</button>
+    </div>
+    <div class="chipRow" id="catChips">
+      <button class="chip cat on" data-cat="all">분류 전체</button>
+      <button class="chip cat" data-cat="고기">고기·구이</button>
+      <button class="chip cat" data-cat="탕찌개">탕·찌개</button>
+      <button class="chip cat" data-cat="치킨">치킨</button>
+      <button class="chip cat" data-cat="분식">분식</button>
+      <button class="chip cat" data-cat="집밥">집밥·한식</button>
+    </div>
   </div>
 </div>
 
 <div id="countBadge">16곳</div>
+<button id="locFab" aria-label="내 위치">◎</button>
 
 <div id="listPanel">
   <div class="head"><b>한인식당 목록</b><p>카드를 누르면 지도에서 팝업으로 열려요</p></div>
@@ -111,7 +122,6 @@
 <nav class="tabbar">
   <button id="tabMap" class="on"><span class="ic">🗺️</span>지도</button>
   <button id="tabList"><span class="ic">☰</span>목록</button>
-  <button id="tabLoc"><span class="ic">◎</span>내 위치</button>
 </nav>
 
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
@@ -138,6 +148,7 @@ const PLACES = [
 const AREA_NAME = {koreatown:"코리아타운", northyork:"노스욕"};
 const CAT_NAME = {고기:"고기·구이", 탕찌개:"탕·찌개", 치킨:"치킨", 분식:"분식", 집밥:"집밥·한식"};
 const CAT_EMOJI = {고기:"🍖", 탕찌개:"🍲", 치킨:"🍗", 분식:"🍙", 집밥:"🍚"};
+const CAT_COLOR = {고기:"#d64541", 탕찌개:"#e8833a", 치킨:"#d99a17", 분식:"#3f7a4e", 집밥:"#5b7fb4"};
 const AREA_VIEW = {all:[[43.727,-79.415],11], koreatown:[[43.6643,-79.4155],15], northyork:[[43.7765,-79.4145],14]};
 let fArea="all", fCat="all", fQuery="", myLatLng=null, selected=null;
 
@@ -170,8 +181,8 @@ function popupHtml(p){
 
 function declutter(){
   const z = map.getZoom();
-  document.body.classList.toggle('zdot', z <= 12);
-  if(z <= 12) return;
+  document.body.classList.toggle('zdot', z <= 13);
+  if(z <= 13) return;
   requestAnimationFrame(()=>{
     const kept = [];
     const ordered = [...markerObjs].sort((a,b)=> (b.p===selected) - (a.p===selected));
@@ -192,11 +203,11 @@ function render(){
   layer.clearLayers(); markerObjs = [];
   list.forEach((p,i)=>{
     const down = i % 2 === 1;
-    const icon = L.divIcon({className:"lbl-wrap", iconSize:[150,58], iconAnchor:[75,29],
-      html:`<div class="marker ${down?'down':''} ${selected===p?'sel':''}"><div class="pill">${p.ko}</div><div class="badge">${CAT_EMOJI[p.cat]}</div></div>`});
+    const icon = L.divIcon({className:"lbl-wrap", iconSize:[150,66], iconAnchor:[75,33],
+      html:`<div class="marker ${down?'down':''} ${selected===p?'sel':''}" style="--c:${CAT_COLOR[p.cat]}"><div class="pill">${p.ko}</div><div class="badge">${CAT_EMOJI[p.cat]}</div></div>`});
     const m = L.marker([p.lat,p.lng], {icon});
     m._place = p;
-    m.bindPopup(popupHtml(p), {closeButton:false, className:'kpop', offset:[0,-16], maxWidth:270});
+    m.bindPopup(popupHtml(p), {closeButton:false, className:'kpop', offset:[0,-18], maxWidth:270});
     m.on('click', ()=>{ selected = p; });
     m.addTo(layer); markerObjs.push({p, marker:m});
   });
@@ -228,6 +239,11 @@ function showTab(which){
 }
 document.getElementById('tabMap').addEventListener('click', ()=> showTab('map'));
 document.getElementById('tabList').addEventListener('click', ()=> showTab('list'));
+document.getElementById('searchBtn').addEventListener('click', ()=>{
+  const r = document.getElementById('searchRow'); r.classList.toggle('show');
+  if(r.classList.contains('show')) document.getElementById('search').focus();
+});
+document.getElementById('filterBtn').addEventListener('click', ()=> document.getElementById('filterPanel').classList.toggle('show'));
 map.on('zoomend moveend', declutter);
 
 document.querySelectorAll('#areaChips .chip[data-area]').forEach(ch => ch.addEventListener('click', ()=>{
@@ -235,12 +251,12 @@ document.querySelectorAll('#areaChips .chip[data-area]').forEach(ch => ch.addEve
   ch.classList.add('on'); fArea = ch.dataset.area; showTab('map'); render();
   const v = AREA_VIEW[fArea]; map.flyTo(v[0], v[1], {duration:.7});
 }));
-document.querySelectorAll('#areaChips .chip[data-cat]').forEach(ch => ch.addEventListener('click', ()=>{
-  document.querySelectorAll('#areaChips .chip[data-cat]').forEach(x=>x.classList.remove('on'));
+document.querySelectorAll('#catChips .chip[data-cat]').forEach(ch => ch.addEventListener('click', ()=>{
+  document.querySelectorAll('#catChips .chip[data-cat]').forEach(x=>x.classList.remove('on'));
   ch.classList.add('on'); fCat = ch.dataset.cat; render();
 }));
 document.getElementById('search').addEventListener('input', e=>{ fQuery = e.target.value.trim().toLowerCase(); render(); });
-document.getElementById('tabLoc').addEventListener('click', ()=>{
+document.getElementById('locFab').addEventListener('click', ()=>{
   if(!navigator.geolocation){ alert('이 기기에서 위치를 쓸 수 없어요.'); return; }
   navigator.geolocation.getCurrentPosition(pos=>{
     myLatLng = [pos.coords.latitude, pos.coords.longitude];
